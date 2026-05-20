@@ -1,0 +1,41 @@
+name: 🤖 Auto-Update WC2026 Scores
+
+# Runs every 2 hours during the tournament window.
+# Also triggerable manually from the GitHub Actions tab.
+on:
+  schedule:
+    - cron: "0 */2 * * *"   # every 2 hours, all year (script exits cleanly pre-tournament)
+  workflow_dispatch:          # manual trigger button in GitHub Actions UI
+
+permissions:
+  contents: write             # allow the workflow to commit scores.json back to the repo
+
+jobs:
+  update-scores:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: ⬇️ Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 📦 Install dependencies
+        run: pip install requests
+
+      - name: ⚽ Run score calculator
+        env:
+          FD_API_KEY: ${{ secrets.FD_API_KEY }}
+        run: python calculate_scores.py
+
+      - name: 💾 Commit scores.json if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add scores.json
+          git diff --staged --quiet \
+            || git commit -m "🤖 Auto-update scores $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
